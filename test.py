@@ -10,6 +10,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from mediapipe.python.solutions.drawing_utils import _normalized_to_pixel_coordinates as denormalize_coordinates
 
+USEMONITOR = False
 
 
 try:
@@ -177,6 +178,8 @@ class DrowsinessDetector:
 
         #initiate gpio 2 for output and set to 0
         os.system("gpio mode 2 out \ gpio write 2 0")
+        # if(USEMONITOR):
+        #     os.system("vncserver")
 
         # Landmarks indices
         self.eye_idxs = {
@@ -413,7 +416,8 @@ def main():
         processed_frame = detector.process_frame(frame)
 
         # Display the processed frame
-        cv2.imshow('Drowsiness Detection', processed_frame)
+        if(USEMONITOR):
+            cv2.imshow('Drowsiness Detection', processed_frame)
 
         # Break the loop if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):
