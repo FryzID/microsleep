@@ -1,0 +1,12 @@
+[Unit]
+Description=USB Device Monitor and Python Script Runner
+After=network.target
+
+[Service]
+ExecStart=/home/orangepi/microsleep/main.sh
+Restart=always
+User=orangepi
+Group=orangepi
+
+[Install]
+WantedBy=multi-user.target
