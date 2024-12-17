@@ -1,54 +1,45 @@
 #!/bin/bash
 
+# Path to your Python script
+PYTHON_SCRIPT="./test.py"
 
-PYTHON_SCRIPT="/home/orangepi/microsleep/test.py"
-
+# USB device identifier (replace with your specific device string)
 USB_DEVICE_IDENTIFIER="JETE-W7"
 
-MAX_RESTART_ATTEMPTS=20
-
-log_message() {
-    echo "$(date): $1" >> /home/orangepi/microsleep/log1.log
-}
-
+# Function to check if the USB device is connected
 is_device_connected() {
     lsusb | grep -q "$USB_DEVICE_IDENTIFIER"
     return $?
 }
 
-main_monitor() {
-    local restart_count=0
-
-    if ! is_device_connected; then
-        log_message "USB device not detected."
-        return 1
-    fi
-
-    python3 "$PYTHON_SCRIPT"
-    local exit_status=$?
-
-    if [ $exit_status -ne 0 ]; then
-        restart_count=$((restart_count + 1))
-        
-        log_message "Python script crashed with exit status $exit_status (Restart attempt $restart_count)"
-        
-        if [ $restart_count -ge $MAX_RESTART_ATTEMPTS ]; then
-            log_message "Max restart attempts reached. Stopping."
-            return 1
-        fi
-        sleep 5
-
-        main_monitor
-        return $?
-    fi
-
-    return 0
-}
-
-
-
+# Main monitoring loop
 while true; do
-    main_monitor
+    # Check if the USB device is connected
+    if is_device_connected; then
+        echo "Webcam Connected"
+        # Run the Python script and keep it running
+        while true; do
+            python3 "$PYTHON_SCRIPT"
+            
+            # Check the exit status
+            EXIT_STATUS=$?
+            
+            # If script exits with non-zero status (crashed), log and retry
+            if [ $EXIT_STATUS -ne 0 ]; then
+                echo "$(date): Python script crashed with exit status $EXIT_STATUS. Restarting in 5 seconds..." >> /path/to/logfile.log
+                sleep 5
+                continue
+            fi
+            
+            # If script exits normally, break inner loop to recheck USB device
+            break
+        done
+    else
+        # If device not connected, wait and check again
+        echo "$(date): USB device not detected. Waiting..." >> /path/to/logfile.log
+        sleep 30
+    fi
     
-    sleep 30
+    # Avoid tight looping
+    sleep 10
 done

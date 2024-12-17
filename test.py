@@ -10,7 +10,8 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from mediapipe.python.solutions.drawing_utils import _normalized_to_pixel_coordinates as denormalize_coordinates
 
-USEMONITOR = False
+os.system("gpio mode 2 out")
+os.system("gpio write 2 0")
 
 
 try:
@@ -163,7 +164,7 @@ class DrowsinessDetector:
                  wait_time=1.0,
                  ear_thresh=0.18,
                  mor_thresh=0.3,  # New parameter for mouth open ratio threshold
-                 alarm_path="wake_up.wav",
+                 alarm_path="audio.mp3",
                  firestore_cred_path=None):
         """
         Initialize the drowsiness detection system.
@@ -177,9 +178,6 @@ class DrowsinessDetector:
         """
 
         #initiate gpio 2 for output and set to 0
-        os.system("gpio mode 2 out \ gpio write 2 0")
-        # if(USEMONITOR):
-        #     os.system("vncserver")
 
         # Landmarks indices
         self.eye_idxs = {
@@ -256,14 +254,20 @@ class DrowsinessDetector:
                 formatted_time = current_time.strftime("%H:%M:%S")
 
                 # Combine date and time
-                waktu = f"{formatted_date} {formatted_time}"
+                waktu = f"{formatted_date}"
+                jam = f"{formatted_time}"
 
+                new_event_ref = self.db.push({
+                                    'waktu': waktu,
+                                    'jam' : jam,
+                                    'timestamp': firestore.SERVER_TIMESTAMP
+                                })                
                 # Add document to Firestore with extended timeout
-                microsleep_ref = self.db.collection('microsleep_events')
-                microsleep_ref.add({
-                    'waktu': waktu,
-                    'timestamp': firestore.SERVER_TIMESTAMP
-                }, timeout=30.0)  # Extend timeout to 30 seconds
+                # microsleep_ref = self.db.collection('microsleep_events')
+                # microsleep_ref.add({
+                #     'waktu': waktu,
+                #     'timestamp': firestore.SERVER_TIMESTAMP
+                # }, timeout=30.0)  # Extend timeout to 30 seconds
 
                 print(f"Microsleep event logged: {waktu}")
 
@@ -317,14 +321,11 @@ class DrowsinessDetector:
             )
 
             # Plot eye landmarks
-            frame_copy = plot_landmarks(frame_copy,
-                                        eye_coordinates[0] + eye_coordinates[1],
-                                        self.state_tracker["COLOR"])
-
-            # Plot mouth landmarks
-            frame_copy = plot_landmarks(frame_copy,
-                                        mouth_coordinates,
-                                        self.BLUE)
+            # Plot eye landmarks
+            if eye_coordinates[0] is not None and eye_coordinates[1] is not None:
+                frame_copy = plot_landmarks(frame_copy,
+                                            eye_coordinates[0] + eye_coordinates[1],
+                                            self.state_tracker["COLOR"])
 
             # Drowsiness detection logic
             drowsy_condition = (EAR < self.ear_thresh) or (MOR > self.mor_thresh)
@@ -373,12 +374,17 @@ class DrowsinessDetector:
             MOR_txt = f"MOR: {round(MOR, 2)}"
             DROWSY_TIME_txt = f"DROWSY: {round(self.state_tracker['DROWSY_TIME'], 3)} Secs"
 
+
+
             frame_copy = plot_text(frame_copy, EAR_txt, self.EAR_txt_pos, self.state_tracker["COLOR"])
             frame_copy = plot_text(frame_copy, MOR_txt, self.MOR_txt_pos, self.BLUE)
             frame_copy = plot_text(frame_copy, DROWSY_TIME_txt, DROWSY_TIME_txt_pos, self.state_tracker["COLOR"])
 
         else:
             # Reset state if no face detected
+            lastDrowsy = self.state_tracker["DROWSY_TIME"]
+            if(lastDrowsy > 0):
+                print(f"last drowsy : {lastDrowsy}\n")
             self.state_tracker["start_time"] = time.perf_counter()
             self.state_tracker["DROWSY_TIME"] = 0.0
             self.state_tracker["COLOR"] = self.GREEN
@@ -401,7 +407,7 @@ def main():
         wait_time=3.0,  # Wait 3 seconds before sounding alarm
         ear_thresh=0.18,  # Eye Aspect Ratio threshold
         mor_thresh=0.4,  # Mouth Open Ratio threshold
-        alarm_path="wake_up.wav",  # Path to alarm sound file
+        alarm_path="audio.mp3",  # Path to alarm sound file
         firestore_cred_path='microsleep.json'  # Path to Firebase credentials
     )
 
@@ -416,8 +422,7 @@ def main():
         processed_frame = detector.process_frame(frame)
 
         # Display the processed frame
-        if(USEMONITOR):
-            cv2.imshow('Drowsiness Detection', processed_frame)
+        cv2.imshow('Drowsiness Detection', processed_frame)
 
         # Break the loop if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):
