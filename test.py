@@ -257,17 +257,13 @@ class DrowsinessDetector:
                 waktu = f"{formatted_date}"
                 jam = f"{formatted_time}"
 
-                new_event_ref = self.db.push({
-                                    'waktu': waktu,
-                                    'jam' : jam,
-                                    'timestamp': firestore.SERVER_TIMESTAMP
-                                })                
                 # Add document to Firestore with extended timeout
-                # microsleep_ref = self.db.collection('microsleep_events')
-                # microsleep_ref.add({
-                #     'waktu': waktu,
-                #     'timestamp': firestore.SERVER_TIMESTAMP
-                # }, timeout=30.0)  # Extend timeout to 30 seconds
+                microsleep_ref = self.db.collection('microsleep_events')
+                microsleep_ref.add({
+                    'waktu': waktu,
+                    'jam': jam,
+                    'timestamp': firestore.SERVER_TIMESTAMP
+                }, timeout=30.0)  # Extend timeout to 30 seconds
 
                 print(f"Microsleep event logged: {waktu}")
 
